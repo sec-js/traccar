@@ -17,16 +17,15 @@ package org.traccar.api;
 
 import org.traccar.helper.Log;
 
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.ext.ExceptionMapper;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.ext.ExceptionMapper;
 
 public class ResourceErrorHandler implements ExceptionMapper<Exception> {
 
     @Override
     public Response toResponse(Exception e) {
-        if (e instanceof WebApplicationException) {
-            WebApplicationException webException = (WebApplicationException) e;
+        if (e instanceof WebApplicationException webException) {
             return Response.fromResponse(webException.getResponse()).entity(Log.exceptionStack(webException)).build();
         } else {
             return Response.status(Response.Status.BAD_REQUEST).entity(Log.exceptionStack(e)).build();

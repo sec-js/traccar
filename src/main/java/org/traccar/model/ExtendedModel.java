@@ -89,19 +89,24 @@ public class ExtendedModel extends BaseModel {
         }
     }
 
-    public String getString(String key) {
+    public String getString(String key, String defaultValue) {
         if (attributes.containsKey(key)) {
-            return attributes.get(key).toString();
+            Object value = attributes.get(key);
+            return value != null ? value.toString() : null;
         } else {
-            return null;
+            return defaultValue;
         }
+    }
+
+    public String getString(String key) {
+        return getString(key, null);
     }
 
     public double getDouble(String key) {
         if (attributes.containsKey(key)) {
             Object value = attributes.get(key);
-            if (value instanceof Number) {
-                return ((Number) attributes.get(key)).doubleValue();
+            if (value instanceof Number numberValue) {
+                return numberValue.doubleValue();
             } else {
                 return Double.parseDouble(value.toString());
             }
@@ -113,8 +118,8 @@ public class ExtendedModel extends BaseModel {
     public boolean getBoolean(String key) {
         if (attributes.containsKey(key)) {
             Object value = attributes.get(key);
-            if (value instanceof Boolean) {
-                return (Boolean) attributes.get(key);
+            if (value instanceof Boolean booleanValue) {
+                return booleanValue;
             } else {
                 return Boolean.parseBoolean(value.toString());
             }
@@ -126,8 +131,8 @@ public class ExtendedModel extends BaseModel {
     public int getInteger(String key) {
         if (attributes.containsKey(key)) {
             Object value = attributes.get(key);
-            if (value instanceof Number) {
-                return ((Number) attributes.get(key)).intValue();
+            if (value instanceof Number numberValue) {
+                return numberValue.intValue();
             } else {
                 return Integer.parseInt(value.toString());
             }
@@ -139,8 +144,8 @@ public class ExtendedModel extends BaseModel {
     public long getLong(String key) {
         if (attributes.containsKey(key)) {
             Object value = attributes.get(key);
-            if (value instanceof Number) {
-                return ((Number) attributes.get(key)).longValue();
+            if (value instanceof Number numberValue) {
+                return numberValue.longValue();
             } else {
                 return Long.parseLong(value.toString());
             }
