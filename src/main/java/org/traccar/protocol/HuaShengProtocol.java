@@ -21,7 +21,7 @@ import org.traccar.TrackerServer;
 import org.traccar.config.Config;
 import org.traccar.model.Command;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class HuaShengProtocol extends BaseProtocol {
 
@@ -29,6 +29,7 @@ public class HuaShengProtocol extends BaseProtocol {
     public HuaShengProtocol(Config config) {
         setSupportedDataCommands(
                 Command.TYPE_POSITION_PERIODIC,
+                Command.TYPE_OUTPUT_CONTROL,
                 Command.TYPE_ALARM_ARM,
                 Command.TYPE_ALARM_DISARM,
                 Command.TYPE_SET_SPEED_LIMIT);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2020 Anton Tananaev (anton@traccar.org)
+ * Copyright 2019 - 2024 Anton Tananaev (anton@traccar.org)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -132,24 +132,34 @@ public class GlobalstarProtocolDecoder extends BaseHttpProtocolDecoder {
             DeviceSession deviceSession = getDeviceSession(channel, remoteAddress, xPath.evaluate("esn", node));
             if (deviceSession != null) {
 
+                boolean atlas = "AtlasTrax".equalsIgnoreCase(getDeviceModel(deviceSession));
                 Position position = new Position(getProtocolName());
                 position.setDeviceId(deviceSession.getDeviceId());
 
-                position.setValid(true);
                 position.setTime(new Date(Long.parseLong(xPath.evaluate("unixTime", node)) * 1000));
 
                 ByteBuf buf = Unpooled.wrappedBuffer(
                         DataConverter.parseHex(xPath.evaluate("payload", node).substring(2)));
 
                 int flags = buf.readUnsignedByte();
-                position.set(Position.PREFIX_IN + 1, !BitUtil.check(flags, 1));
-                position.set(Position.PREFIX_IN + 2, !BitUtil.check(flags, 2));
-                position.set(Position.KEY_CHARGE, !BitUtil.check(flags, 3));
-                if (BitUtil.check(flags, 4)) {
-                    position.set(Position.KEY_ALARM, Position.ALARM_VIBRATION);
+                int type;
+                if (atlas) {
+                    type = BitUtil.to(flags, 1);
+                    position.setValid(true);
+                    position.set(Position.PREFIX_IN + 1, !BitUtil.check(flags, 1));
+                    position.set(Position.PREFIX_IN + 2, !BitUtil.check(flags, 2));
+                    position.set(Position.KEY_CHARGE, !BitUtil.check(flags, 3));
+                    if (BitUtil.check(flags, 4)) {
+                        position.addAlarm(Position.ALARM_VIBRATION);
+                    }
+                    position.setCourse(BitUtil.from(flags, 5) * 45);
+                } else {
+                    type = BitUtil.to(flags, 2);
+                    if (BitUtil.check(flags, 2)) {
+                        position.set("batteryReplace", true);
+                    }
+                    position.setValid(!BitUtil.check(flags, 3));
                 }
-
-                position.setCourse(BitUtil.from(flags, 5) * 45);
 
                 double latitude = buf.readUnsignedMedium() * 90.0 / (1 << 23);
                 position.setLatitude(latitude > 90 ? latitude - 180 : latitude);
@@ -157,10 +167,19 @@ public class GlobalstarProtocolDecoder extends BaseHttpProtocolDecoder {
                 double longitude = buf.readUnsignedMedium() * 180.0 / (1 << 23);
                 position.setLongitude(longitude > 180 ? longitude - 360 : longitude);
 
-                int speed = buf.readUnsignedByte();
-                position.setSpeed(UnitsConverter.knotsFromKph(speed));
-
-                position.set("batteryReplace", BitUtil.check(buf.readUnsignedByte(), 7));
+                int speed = 0;
+                if (atlas) {
+                    speed = buf.readUnsignedByte();
+                    position.setSpeed(UnitsConverter.knotsFromKph(speed));
+                    position.set("batteryReplace", BitUtil.check(buf.readUnsignedByte(), 7));
+                } else if (type == 0) {
+                    position.set(Position.KEY_INPUT, BitUtil.to(buf.readUnsignedByte(), 4));
+                    int other = buf.readUnsignedByte();
+                    if (BitUtil.check(other, 4)) {
+                        position.addAlarm(Position.ALARM_VIBRATION);
+                    }
+                    position.set(Position.KEY_MOTION, BitUtil.check(other, 6));
+                }
 
                 if (speed != 0xff) {
                     positions.add(position);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 - 2022 Anton Tananaev (anton@traccar.org)
+ * Copyright 2016 - 2024 Anton Tananaev (anton@traccar.org)
  * Copyright 2016 - 2018 Andrey Kunitsyn (andrey@traccar.org)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,7 @@ import org.traccar.storage.query.Condition;
 import org.traccar.storage.query.Order;
 import org.traccar.storage.query.Request;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -71,9 +71,17 @@ public class EventsReportProvider {
                 new Order("eventTime")));
     }
 
+    private boolean filterType(Collection<String> types, Collection<String> alarms, Event event) {
+        if (!types.contains(event.getType())) {
+            return false;
+        }
+        return !event.getType().equals(Event.TYPE_ALARM) || alarms.isEmpty()
+                || alarms.contains(event.getString(Position.KEY_ALARM));
+    }
+
     public Collection<Event> getObjects(
             long userId, Collection<Long> deviceIds, Collection<Long> groupIds,
-            Collection<String> types, Date from, Date to) throws StorageException {
+            Collection<String> types, Collection<String> alarms, Date from, Date to) throws StorageException {
         reportUtils.checkPeriodLimit(from, to);
 
         ArrayList<Event> result = new ArrayList<>();
@@ -81,7 +89,7 @@ public class EventsReportProvider {
             Collection<Event> events = getEvents(device.getId(), from, to);
             boolean all = types.isEmpty() || types.contains(Event.ALL_EVENTS);
             for (Event event : events) {
-                if (all || types.contains(event.getType())) {
+                if (all || filterType(types, alarms, event)) {
                     long geofenceId = event.getGeofenceId();
                     long maintenanceId = event.getMaintenanceId();
                     if ((geofenceId == 0 || reportUtils.getObject(userId, Geofence.class, geofenceId) != null)
@@ -97,7 +105,8 @@ public class EventsReportProvider {
 
     public void getExcel(
             OutputStream outputStream, long userId, Collection<Long> deviceIds, Collection<Long> groupIds,
-            Collection<String> types, Date from, Date to) throws StorageException, IOException {
+            Collection<String> types, Collection<String> alarms,
+            Date from, Date to) throws StorageException, IOException {
         reportUtils.checkPeriodLimit(from, to);
 
         ArrayList<DeviceReportSection> devicesEvents = new ArrayList<>();
@@ -110,7 +119,7 @@ public class EventsReportProvider {
             boolean all = types.isEmpty() || types.contains(Event.ALL_EVENTS);
             for (Iterator<Event> iterator = events.iterator(); iterator.hasNext();) {
                 Event event = iterator.next();
-                if (all || types.contains(event.getType())) {
+                if (all || filterType(types, alarms, event)) {
                     long geofenceId = event.getGeofenceId();
                     long maintenanceId = event.getMaintenanceId();
                     if (geofenceId != 0) {
